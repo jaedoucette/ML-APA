@@ -1,7 +1,9 @@
 ''' Implementation of KNN (exact) in Python 3, to facilitate exercises in Ch 1.
 of ML-APA without needing MATLAB, and for some practice.
 '''
-from heapq import heappush, heappop, heappushpop
+import doctest
+from heapq import heappush, heappushpop
+import numpy as np
 
 def exact_knn(x_test, x_training, y_training, k=5):
     '''Computes exact k-nearest neighbour label for test input x.
@@ -25,10 +27,10 @@ def exact_knn(x_test, x_training, y_training, k=5):
     0
     '''
     heap = [] #heap of pairs of distances and indices.
-    for i in range(len(x_training)):
-        dists = ((i-j)**2 for i, j in zip(x_test, x_training[i]))
+    for i, item in enumerate(x_training):
         dist_sum = 0
-        for dist in dists:
+        for j, feature in enumerate(x_test):
+            dist = (int(x_test[j]) - int(item[j]))**2
             dist_sum -= dist # use negative distances to work with min-heap
             if len(heap) == k and dist_sum < heap[0][0]:
                 break
@@ -43,6 +45,37 @@ def exact_knn(x_test, x_training, y_training, k=5):
     best_label = sorted(labels.items(), key=lambda x: -x[1])[0][0]
     return best_label
 
+def read_data(fname):
+    '''Reads a binary dataformat used in the MNIST sets'''
+    with open(fname, 'r') as data_file:
+        bits = np.fromfile(data_file, dtype=np.ubyte)
+        bits = bits[16:] # cut off the formating header.
+        image_size = 28*28
+        return np.reshape(bits, [len(bits)//image_size, image_size])
+
+def read_labels(fname):
+    '''Reads a binary label format used in the MNIST sets'''
+    with open(fname, 'r') as data_file:
+        bits = np.fromfile(data_file, dtype=np.ubyte)
+        return bits[8:] # cut off the formating header.
+
 if __name__ == "__main__":
-    import doctest
     doctest.testmod()
+    training = read_data('data/train-images-idx3-ubyte')
+    test = read_data('data/t10k-images-idx3-ubyte')
+    training_labels = read_labels('data/train-labels-idx1-ubyte')
+    test_labels = read_labels('data/t10k-labels-idx1-ubyte')
+
+    num_correct = 0
+    counter = 0
+    for example, truth in zip(test[0:1000], test_labels[0:1000]):
+        label = exact_knn(example, training, training_labels)
+        num_correct += 1 if label == truth else 0
+        counter += 1
+        if counter % (len(test)//100) == 0:
+            print('*', end='', flush=True)
+    print('done!')
+    print(f'Accuracy: {100*num_correct/len(test)}%')
+
+
+
